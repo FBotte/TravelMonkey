@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using TravelMonkey.Services;
 using TravelMonkey.ViewModels;
 using Xamarin.Forms;
 
@@ -15,6 +16,15 @@ namespace TravelMonkey.Views
             InitializeComponent();
 
             BindingContext = _mainPageViewModel;
+            MessagingCenter.Subscribe<MainPageViewModel,string>(this, Constants.PictureDetail, (vm,id) => OnPictureTapped(id));
+        }
+
+        private async void OnPictureTapped(string id)
+        {
+            var page = new PictureView();
+            var vm = new PictureDetailsViewModel(id);
+            page.BindingContext = vm;
+            await Navigation.PushModalAsync(page);
         }
 
         protected override void OnAppearing()

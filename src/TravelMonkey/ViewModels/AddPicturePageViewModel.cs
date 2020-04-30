@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Acr.UserDialogs;
 using Plugin.Media;
 using Plugin.Media.Abstractions;
@@ -12,6 +13,7 @@ namespace TravelMonkey.ViewModels
     public class AddPicturePageViewModel : BaseViewModel
     {
         private readonly ComputerVisionService _computerVisionService = new ComputerVisionService();
+        private readonly AzureStorageService _storageService = new AzureStorageService();
 
         public bool ShowImagePlaceholder => !ShowPhoto;
         public bool ShowPhoto => _photoSource != null;
@@ -58,10 +60,26 @@ namespace TravelMonkey.ViewModels
         public AddPicturePageViewModel()
         {
             TakePhotoCommand = new Command(async () => await TakePhoto());
-            AddPictureCommand = new Command(() =>
+            AddPictureCommand = new Command(async () =>
              {
-                 MockDataStore.Pictures.Add(new PictureEntry { Description = _pictureDescription, Image = _photoSource });
-                 MessagingCenter.Send(this, Constants.PictureAddedMessage);
+                 if (ShowPhoto)
+                 {
+                     var res = await _storageService.PerformBlobOperation(_photo);
+                     if (!res.Success)
+                     {
+                         MessagingCenter.Send(this, Constants.AzureBlobFail);
+                         MockDataStore.Pictures.Add(new PictureEntry { Id = Guid.NewGuid().ToString(), Description = _pictureDescription, Image = PhotoSource });
+                     } else
+                     {
+                         MockDataStore.Pictures.Add(new PictureEntry { Id = Guid.NewGuid().ToString(), Description = _pictureDescription, Image = ImageSource.FromUri(res.Uri) });
+                     }
+
+                     MessagingCenter.Send(this, Constants.PictureAddedMessage);
+                 } else
+                 {
+                     MessagingCenter.Send(this, Constants.NoPictureSelected);
+                 }
+                 
              });
         }
 
@@ -74,13 +92,14 @@ namespace TravelMonkey.ViewModels
             {
                 _photo = await CrossMedia.Current.TakePhotoAsync(new StoreCameraMediaOptions { PhotoSize = PhotoSize.Small });
 
-                PhotoSource = (StreamImageSource)ImageSource.FromStream(() => _photo.GetStream());
+
+                PhotoSource = _photo != null ? (StreamImageSource)ImageSource.FromStream(() => _photo.GetStream()) : null;
             }
             else if (result.Equals("Choose photo"))
             {
                 _photo = await CrossMedia.Current.PickPhotoAsync(new PickMediaOptions { PhotoSize = PhotoSize.Small });
 
-                PhotoSource = (StreamImageSource)ImageSource.FromStream(() => _photo.GetStream());
+                PhotoSource = _photo != null ? (StreamImageSource)ImageSource.FromStream(() => _photo.GetStream()) : null;
             }
             else
             {
@@ -104,6 +123,7 @@ namespace TravelMonkey.ViewModels
             try
             {
                 var pictureStream = _photo.GetStreamWithImageRotatedForExternalStorage();
+
                 var result = await _computerVisionService.AddPicture(pictureStream);
 
                 if (!result.Succeeded)

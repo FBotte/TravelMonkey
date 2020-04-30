@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Timers;
 using TravelMonkey.Data;
 using TravelMonkey.Models;
+using TravelMonkey.Services;
 using Xamarin.Essentials;
 using Xamarin.Forms;
 
@@ -11,6 +12,7 @@ namespace TravelMonkey.ViewModels
     public class MainPageViewModel : BaseViewModel
     {
         private readonly Timer _slideShowTimer = new Timer(5000);
+        private readonly AzureStorageService _storageService = new AzureStorageService();
 
         public List<Destination> Destinations => MockDataStore.Destinations;
         public ObservableCollection<PictureEntry> Pictures => MockDataStore.Pictures;
@@ -21,6 +23,8 @@ namespace TravelMonkey.ViewModels
             get => _currentDestination;
             set => Set(ref _currentDestination, value);
         }
+
+        public Command<string> PictureCommand { get; }
 
         public Command<string> OpenUrlCommand { get; } = new Command<string>(async (url) =>
         {
@@ -35,6 +39,7 @@ namespace TravelMonkey.ViewModels
 
         public MainPageViewModel()
         {
+            _storageService.GetAllBlobs();
             if (Destinations.Count > 0)
             {
                 CurrentDestination = Destinations[0];
@@ -49,6 +54,11 @@ namespace TravelMonkey.ViewModels
                         CurrentDestination = Destinations[currentIdx + 1];
                 };
             }
+
+            PictureCommand = new Command<string>((desc) => 
+            { 
+                MessagingCenter.Send<MainPageViewModel, string>(this, Constants.PictureDetail, desc); 
+            });
         }
 
         public void StartSlideShow()

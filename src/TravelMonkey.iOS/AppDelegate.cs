@@ -1,4 +1,5 @@
 ﻿using Foundation;
+using Lottie.Forms.iOS.Renderers;
 using UIKit;
 
 namespace TravelMonkey.iOS
@@ -19,10 +20,11 @@ namespace TravelMonkey.iOS
         public override bool FinishedLaunching(UIApplication app, NSDictionary options)
         {
             global::Xamarin.Forms.Forms.Init();
-
+            AnimationViewRenderer.Init();
             UIApplication.SharedApplication.StatusBarStyle = UIStatusBarStyle.LightContent;
 
             LoadApplication(new App());
+
 
             return base.FinishedLaunching(app, options);
         }
